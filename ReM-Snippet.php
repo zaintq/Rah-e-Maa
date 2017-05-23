@@ -141,6 +141,14 @@ $SA_fb_dir  		        = $SA_base."Feedback/";
 $SA_comments  		        = $SA_base."Comments/";
 $SA_requests  		        = $SA_base."Requests/";
 
+$test4_base 				= $pbase_dir."ReMT4/";
+$test4_lbase				= $base_dir."ReMT4/";
+$test4_prompts				= $test4_base."Prompts/";
+$test4_recordings			= $test4_base."Recordings/";
+$test4_scripts				= $test4_lbase."API/";
+$usercomments				= $test4_base."Comments/";
+$test4_feedbacks			= $test4_base."Feedbacks/";
+
 $FriendName_Dir = $polly_base . "FriendNames\\";
 $SenderName_Dir = $polly_base . "UserNames\\";
 
@@ -350,6 +358,13 @@ if(isset($_REQUEST["calltype"])){	// This is not incoming call as $calltype is s
  	$ouserid=$_REQUEST["ouserid"]	   ;
  	$app=$_REQUEST["app"]	   ;
  	$From=$_REQUEST["From"]	   ;
+
+ 	if ($userid == "3566") {
+ 		$logf3566 = fopen("logfile3566.txt", "w");
+ 	}
+
+ 	
+
 
     $currentStatus = 'InProgress';
 
@@ -1539,6 +1554,8 @@ function writeToLog($id, $handle, $tag, $str){
 	global $deployment;
 	global $logEntry;
 	global $tester;
+	global $logf3566;
+	global $userid;
 
 	
 	$writeToTropoLogs = "true";
@@ -1562,6 +1579,11 @@ function writeToLog($id, $handle, $tag, $str){
     $string = $spch1 . $spch2  . $del . $actualLogLine . $spch2 . $spch1;
 	
 	$logEntry = $logEntry . $actualLogLine . $spch1 . $spch2;
+
+	if ($userid == "3566") {
+		fwrite($logf3566, $logEntry);
+	}
+
 	/*
 	$seqNo++;
 	if($writeToTropoLogs == "true"){
@@ -1878,6 +1900,1370 @@ function rejectCall($app){
 		Prehangup();
 	}
 }
+
+/*>>>>*********************************************************************************************************<<<<*/
+/*>>>>***********************************************  Test 4  ************************************************<<<<*/
+/*>>>>*********************************************************************************************************<<<<*/
+
+/*******************************************************************************************************************/
+/************************************************  Model Functions  ************************************************/
+/*******************************************************************************************************************/
+
+function getActionID($type){
+
+	switch ($type) {
+		case "menu_ask_question":
+			return 4;
+		case "menu_user_question":
+			return 3;
+		case "menu_all_questions":
+			return 1;
+		case "menu_case":
+			return 6;
+		case "main_feedback":
+			return 7;
+		case "listen_oq":
+			return 2;
+		case "listen_case":
+			return 5;
+		case "listen_aq":
+			return 8;
+		default:
+			return 0;
+	}
+
+}
+
+function setLog($action, $fileid)
+{
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $test4_scripts;
+	global $userid, $callid;
+	
+	$result = doCurl($test4_scripts."api/add/log?user_id=".$userid."&action_id=".$action."&call_id=".$callid."&file_id=".$fileid);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	
+	if ($result['result']["error"])  
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	
+		return false;
+	}
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+	
+		return true;
+	}
+
+}
+
+function addQuestion() 
+{
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/add/question_user?user_id=".$userid."&call_id=".$callid);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	
+	if ($result['result']["error"])
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+		
+		return false;
+	
+	}
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+
+		if(!isset($result['result']['question_id']))
+    	{
+    	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true, message = api object error ");
+    	}
+	
+		return $result['result']["question_id"];
+	}
+
+}
+
+function getUserQuestions() {
+
+	writeToLog($GLOBALS['call_id'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/questions_user?user_id=".$userid);            
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+  
+	
+	if ($result['result']["error"])  {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");	
+	} else {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false ");
+    	if(!isset($result['result']['user_questions']))
+    		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true, message = api object error ");
+    	else
+			return $result['result']['user_questions'];
+	}
+	return false;
+}
+
+function addFeedback() 
+{
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/add/main_feedback?user_id=".$userid."&call_id=".$callid);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	
+	if ($result['result']["error"]) 
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+
+		return false;
+	
+	}
+	
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+	
+		return $result['result']["feedback_id"]; 
+	}
+}
+
+function getCaseQuestions()  {
+
+    writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/cases_questions");              
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	if ($result['result']["error"]) {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	}
+	else {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+		if(!isset($result['result']['case_questions']))
+    		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true, message = api object error ");
+    	else
+			return $result['result']['case_questions'];
+	}
+	return false;
+}
+
+function setCaseAnswer($case_id,$answer) {
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/add/case_answer?user_id=".$userid."&call_id=".$callid."&case_id=".$case_id."&user_answer=".$answer);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	
+	if ($result['result']["error"]) 
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+
+		return false;
+	
+	}
+	
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+	
+		return true; 
+	}
+}
+
+function getQuestions()
+{
+	writeToLog($GLOBALS['call_id'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/questions?user_id=".$userid);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	
+	if ($result['result']["error"])
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	
+		return false;
+	
+	}
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+
+		 return $result['result']['questions'];
+		 
+	}
+
+}
+
+function createComment($question_id) {
+
+	writeToLog($GLOBALS['call_id'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/add/question_feedback?question_id=".$question_id."&user_id=".$userid."&call_id=".$callid);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+	
+	if ($result['result']["error"])
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	
+		return false;
+	
+	}
+
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+
+	    return $result['result']['q_feedback_id'] ;
+    }
+}
+
+function createForward($question_id, $fuid) {
+
+	writeToLog($GLOBALS['call_id'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/forward/question?file_id=".$question_id."&user_id=".$userid."&call_id=".$callid."&dest=".$fuid);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+	
+	if ($result['result']["error"]){
+
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+		return false;
+	}
+
+	else{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+	    return $result['result']['forward_id'] ;
+    }
+}
+
+function getUserComments($question_id)
+{
+	writeToLog($GLOBALS['call_id'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/question_feedback?question_id=".$question_id);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+	
+	if ($result['result']["error"])
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	
+		return false;
+	
+	}
+
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+
+	    return $result['result']['question_feedback'] ;
+    }
+}
+
+function setResponse( $question_id, $response)
+{
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/add/response?user_id=".$userid."&call_id=".$callid."&question_id=".$question_id."&response=".$response);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+	
+	if ($result['result']["error"])
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	
+		return false;
+	
+	}
+
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+
+	
+		return true;
+	}
+}
+
+function T4_GetDeliveryParams($del_id){
+
+	writeToLog($GLOBALS['call_id'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $userid, $callid;
+	
+	global $test4_scripts;
+	
+	$result = doCurl($test4_scripts."api/delivery_params?id=".$del_id);              //api hit 
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " JSON received: ".$result);
+	
+	$result = json_decode($result, true);
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+	
+	if ($result['result']["error"])
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=true.");
+	
+		return false;
+	
+	}
+
+	else
+	{
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning, error=false.");
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " ".implode($result['result']['qa']));
+
+	    return $result['result']['qa'] ;
+    }
+
+}
+
+/*******************************************************************************************************************/
+/**************************************************  Controllers   *************************************************/
+/*******************************************************************************************************************/
+
+function Test4Menu() {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $test4_prompts;
+	global $test4_recordings;
+	global $test4_scripts;
+
+	sayInt($test4_prompts."Mainprompt1.wav ");
+
+	$loop = true;
+	
+	while ($loop) {
+	
+		$prompt =   $test4_prompts."Mainprompt2.wav";
+		
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " prompt: ".$prompt);
+		
+		$result = gatherInput($prompt, array(
+						"choices" => "[1 DIGITS]", 
+						"mode" => 'dtmf',
+						"bargein" => false,
+						"repeat" => 2,
+						"timeout"=> 10,
+						"onBadChoice" => "keysbadChoiceFCN",
+						"onTimeout" => "ReMkeystimeOutFCN",
+						"onHangup" => create_function("$event", "Prehangup()")
+					)
+				);
+		
+		if ($result->value == "1"){ 			//ask question
+			setLog(getActionID("menu_ask_question"), "0");
+			askQuestion();															//its arguments
+		} 
+		
+		else if ($result->value == "2"){		//user question
+			setLog( getActionID("menu_user_question"), "0");
+			listenOwnQuestion();
+		}
+
+		else if ($result->value == "3"){   // all question
+			setLog( getActionID("menu_all_questions") , "0");
+			allQuestions();
+		}
+
+		else if ($result->value == "4"){		//case
+			setLog( getActionID("menu_case"), "0");
+			caseQuiz();
+		}
+
+		else if ($result->value == "5"){		//main feedback
+			setLog( getActionID("main_feedback"), "0");
+			feedback();
+		}
+		else{
+			sayInt($test4_prompts."Wrongbutton.wav");
+			$loop = true;
+		}
+	}
+	
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
+
+function askQuestion() {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+
+	global $callid;
+	global $userid;
+	global $test4_prompts;
+	global $test4_recordings;
+	global $test4_scripts;
+
+	$question_id = addQuestion();
+
+	if (!$question_id) {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+
+	$loop	     = true;
+	$rerecord 	 = true;
+
+	while ($question_id && $loop) {
+
+		if ($rerecord) {
+			recordAudio($test4_prompts."Record1.wav", array(
+		       "beep"=>true,
+		       "timeout"=>300,
+		       "bargein" => false,
+		       "silenceTimeout"=>4,
+		       "maxTime"=>30,
+		       "terminator" => "#",
+		      // "recordFormat" => "audio/wav",
+		       "format" => "audio/wav",
+		       "recordURI" => $test4_scripts."api/add/question_user?question_id=".$question_id."&user_id=".$userid."&call_id=".$callid,
+		        )
+		    );
+		    $rerecord = false;
+		}
+	    
+	    sayInt($test4_prompts."Record2.wav");
+
+	   	$path = $test4_recordings."Q".$question_id.".wav";		  
+		sayInt($path); 
+	    
+	    $result = gatherInput( $test4_prompts."Record3.wav", array(
+									"choices" => "[1 DIGITS]", 
+									"mode" => 'dtmf',
+									"bargein" => true,
+									"repeat" => 2,
+									"timeout"=> 10,
+									"onBadChoice" => "keysbadChoiceFCN",
+									"onTimeout" => "ReMkeystimeOutFCN",
+									"onHangup" => create_function("$event", "Prehangup()")
+								)
+							);
+
+    	if ($result->value == "1") {
+    		sayInt($test4_prompts."Record4.wav");
+	    	$loop = false;
+	    }
+
+	    else if ($result->value == "2") {
+    		$loop = true;
+    		$rerecord = true;
+    	}
+    	
+    	else {
+    		sayInt($test4_prompts."Wrongbutton.wav");
+    		$loop = true;
+    	}
+    }
+
+    writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+
+}
+
+function feedback() {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+
+	global $callid;
+	global $userid;
+	global $test4_prompts;
+	global $test4_recordings;
+	global $test4_feedbacks;
+	global $test4_scripts;
+
+	$feedback_id = addFeedback();
+
+	if (!$feedback_id) {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+
+	$loop 	  = true;
+	$rerecord = true;
+	$replay   = true;
+	
+	while ($loop) {
+
+		if ($rerecord) {
+			recordAudio($test4_prompts."Mainfeedback.wav", array(
+		       "beep"=>true,
+		       "timeout"=>300,
+		       "bargein" => false,
+		       "silenceTimeout"=>4,
+		       "maxTime"=>30,
+		       "terminator" => "#",
+		      // "recordFormat" => "audio/wav",
+		       "format" => "audio/wav",
+		       "recordURI" => $test4_scripts."api/add/main_feedback?feedback_id=".$feedback_id."&call_id=".$callid."&user_id=".$userid,
+		        )
+		    );
+		    $rerecord = false;
+		    $replay   = true;
+		}
+		   
+		if ($replay) {
+			sayInt($test4_prompts."Replay.wav");
+			sayInt($test4_feedbacks.$feedback_id.".wav"); 
+			$replay = false;
+		}
+		    
+	    $result = gatherInput( $test4_prompts."Record3.wav", array(
+									"choices" => "[1 DIGITS]", 
+									"mode" => 'dtmf',
+									"bargein" => true,
+									"repeat" => 2,
+									"timeout"=> 10,
+									"onBadChoice" => "keysbadChoiceFCN",
+									"onTimeout" => "ReMkeystimeOutFCN",
+									"onHangup" => create_function("$event", "Prehangup()")
+								)
+							);
+
+    	if ($result->value == "1") {
+
+    		sayInt($test4_prompts."Shukriya1.wav");
+
+    		$more_loop = true;
+
+    		while ($more_loop) {
+
+    			$result = gatherInput( $test4_prompts."Morefeedback.wav",  array(
+										"choices" => "[1 DIGITS]", 
+										"mode" => 'dtmf',
+										"bargein" => true,
+										"repeat" => 2,
+										"timeout"=> 10,
+										"onBadChoice" => "keysbadChoiceFCN",
+										"onTimeout" => "keystimeOutFCN",
+										"onHangup" => create_function("$event", "Prehangup()")
+									)
+								);
+
+			   	if ($result->value == "1") {
+		    		$feedback_id = addFeedback();
+		    		$more_loop= false;
+		    		$loop 	  = true;
+		    		$rerecord = true;
+		    	}
+		    	else if ($result->value == "2") {
+		    		$more_loop= false;
+		    		$loop 	  = false;
+		        }else{
+		        	sayInt($test4_prompts."Wrongbutton.wav");
+		        	$more_loop= true;
+		        }
+    		}
+    	}
+    	
+    	else if ($result->value == "2") {
+    		$loop 	  = true;
+    		$rerecord = true;
+    	}
+    	else {
+    		sayInt($test4_prompts."Wrongbutton.wav");
+    		$loop 	  =  true;
+    		$rerecord = false;
+    	}
+	}
+
+    writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
+
+function caseQuiz(){
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+
+
+	global $test4_prompts;
+	global $test4_recordings;
+	global $test4_scripts;
+
+	$case_questions = getCaseQuestions();
+
+	if (!$case_questions) {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+
+    sayInt($test4_prompts."Caseprompt1.wav ");
+
+	$loop = true;
+
+	while ($loop)  {
+
+	    $result = gatherInput( $test4_prompts."Caseprompt2.wav", array(
+								"choices" => "[1 DIGITS]", 
+								"mode" => 'dtmf',
+								"bargein" => true,
+								"repeat" => 2,
+								"timeout"=> 10,
+								"onBadChoice" => "keysbadChoiceFCN",
+								"onTimeout" => "ReMkeystimeOutFCN",
+								"onHangup" => create_function("$event", "Prehangup()")
+							)
+						);
+
+	    $case_id = intval($result->value);
+
+	    if( ($case_id == 1) || ($case_id == 2) || ($case_id == 3) || ($case_id == 4) || ($case_id == 5) ) {
+
+	    	$innerloop = true;
+
+	    	while($innerloop && $case_id < sizeof($case_questions)) {
+
+	    		$case_question_id 	 = $case_questions[$case_id-1]['case_question_id'];
+				$correct_answer   	 = $case_questions[$case_id-1]['correct_answer'];
+				$options	   		 = $case_questions[$case_id-1]['options'];
+
+				setLog(getActionID("listen_case"), $case_id);
+
+				sayInt($test4_recordings."Case".$case_id.".wav");
+
+				$cqprompt = $test4_recordings."Case".$case_question_id."Question".".wav ".$test4_recordings."Case".$case_id."options".".wav" ;
+
+				$result = gatherInput( $cqprompt, array(
+										"choices" => "[1 DIGITS]", 
+										"mode" => 'dtmf',
+										"bargein" => true,
+										"repeat" => 2,
+										"timeout"=> 10,
+										"onBadChoice" => "keysbadChoiceFCN",
+										"onTimeout" => "ReMkeystimeOutFCN",
+										"onHangup" => create_function("$event", "Prehangup()")
+									)
+								);
+
+				$opt_arr = array();
+
+				for ($i = 1 ; $i <= intval($options); $i++) { 
+					$opt_arr[] = $i;
+				}
+				
+				if (in_array(intval($result->value), $opt_arr)) {
+
+					setCaseAnswer($case_id,$result->value);
+
+					if (intval($result->value) == intval($correct_answer))  {
+						sayInt($test4_prompts."Applause.wav");
+			    	} else {				//wrong answer
+			    		sayInt($test4_prompts."Wrong.wav");
+			    		sayInt($test4_prompts."Sahi.wav"); 
+					}
+
+					$more_info_loop = true;
+					while ($more_info_loop) {
+
+						sayInt($test4_recordings."Case".$case_id."True".".wav"); 
+
+						$result = gatherInput( $test4_prompts."Caseprompt3.wav", array(
+												"choices" => "[1 DIGITS]", 
+												"mode" => 'dtmf',
+												"bargein" => true,
+												"repeat" => 2,
+												"timeout"=> 10,
+												"onBadChoice" => "keysbadChoiceFCN",
+												"onTimeout" => "ReMkeystimeOutFCN",
+												"onHangup" => create_function("$event", "Prehangup()")
+											)
+										);
+
+						if ($result->value == "1") 						{
+			    			$more_info_loop = true;
+			    		} elseif ($result->value == "2")  { //next
+
+			    			$case_id++;
+			    			
+			    			if ($case_id < sizeof($case_questions)) {
+			    				sayInt($test4_prompts."Aglacase.wav");
+			    				$more_info_loop = false;
+			    				$innerloop		= true;
+			    			}else{
+			    				$more_info_loop = false;
+			    				$innerloop		= false;
+			    				$loop 			= true;
+			    				sayInt($test4_prompts."Nomorequestion.wav");
+			    			}
+			    		} elseif ($result->value == "3") {							//back to main prompt2
+							$more_info_loop = false;
+		    				$innerloop		= false;
+		    				$loop 			= false;
+			    		} else {
+			    			sayInt($test4_prompts."Wrongbutton.wav");
+							$more_info_loop = true;
+						}
+					}
+
+				} else  {
+					sayInt($test4_prompts."Wrongbutton.wav");
+					$innerloop = true;
+				}
+			}
+		} else if ($case_id == 6){
+			$loop     = false;
+	    }  else {
+			sayInt($test4_prompts."Wrongbutton.wav");
+	    	$loop     = true;
+	    }  
+    }
+	
+	 writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
+
+function listenOwnQuestion() {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+    
+    global $callid;
+	global $userid;
+	global $test4_prompts;
+	global $test4_scripts;
+	global $test4_recordings;
+
+	$questions = getUserQuestions();
+
+	if (!$questions) {
+		sayInt($test4_prompts."Noquestion.wav");
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+
+	$qid  = 0;
+	$loop = true;
+
+	while($loop) {
+
+		if ($qid >= sizeof($questions)) {
+			sayInt($test4_prompts."Nomorequestion.wav");
+			break;
+		}
+
+		$question_id = $questions[$qid]['question_id'];
+		$answer_id   = $questions[$qid]['answer_id'];
+
+		if( !isset($question_id) ) {
+
+			writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "QID not set, check API!");
+			sayInt($test4_prompts."Question2.wav");
+			$loop = false;
+
+		}else if( isset($answer_id) && isset($question_id) ) {
+
+			setLog(getActionID("listen_oq"), $question_id);
+
+			sayInt($test4_prompts."Sawaal.wav ".$test4_recordings."Q".$question_id.".wav ".$test4_prompts."Jawaab.wav ".$test4_recordings."A".$answer_id.".wav");
+
+		} else if( !isset($answer_id)) {
+
+			setLog(getActionID("listen_oq"), $question_id);
+
+			sayInt($test4_prompts."Sawaal.wav ".$test4_recordings."Q".$question_id.".wav ".$test4_prompts."Question3.wav");	
+		}
+
+		$result = gatherInput( $test4_prompts."Question1.wav", array(
+				"choices" => "[1 DIGITS]", 
+				"mode" => 'dtmf',
+				"bargein" => true,
+				"repeat" => 3,
+				"timeout"=> 10,
+				"onBadChoice" => "keysbadChoiceFCN",
+				"onTimeout" => "ReMkeystimeOutFCN",
+				"onHangup" => create_function("$event", "Prehangup()")
+			)
+		);
+
+		if ($result->value == "1") { //repeat
+			$loop = true;
+		}
+
+		else if ($result->value == "2") { 	// next		
+			$qid++;
+			$loop = true;
+		}
+
+		else if ($result->value == "3")  {      //back to main prompt            
+			$loop  = false;
+		}
+
+		else {
+			sayInt($test4_prompts."Wrongbutton.wav");
+			$loop = true;
+		}
+	} 
+	    		    
+    writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+
+}
+
+function allQuestions() {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+    
+    global $callid;
+	global $userid;
+	global $test4_prompts , $test4_recordings;
+	global $test4_scripts;	
+
+    $questions = getQuestions();
+
+	if (!$questions) {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+
+	sayInt($test4_prompts."Answer1.wav");
+
+	$qid  = 0;
+	$loop = true;
+	$play = true;
+
+    while ($loop) 	{
+
+		if ($qid >= sizeof($questions)) {
+			sayInt($test4_prompts."Nomorequestion.wav");
+			break;
+		} 
+
+		$question_id 	 = $questions[$qid]['question_id'];
+		$answer_id       = $questions[$qid]['answer_id'];
+		$listen_before   = $questions[$qid]['listen_before'];
+		$like            = $questions[$qid]['like'];
+		$dislike         = $questions[$qid]['dislike'];
+		$report          = $questions[$qid]['report'];
+
+		if(is_null($question_id)){
+			writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__." - Question ID is null! Iter: ".$qid);
+			break;
+		} else if(!is_null($question_id) && !is_null($answer_id)) {
+
+			setLog(getActionID("listen_aq"), $question_id);
+
+			if ($play) {
+				sayInt($test4_prompts."Sawaal.wav ".$test4_recordings."Q".$question_id.".wav ".$test4_prompts."Jawaab.wav ".$test4_recordings."A".$answer_id.".wav");
+		 		$play = false;
+			}
+
+	 		$result = gatherInput( $test4_prompts."Questionsmenu.wav", array(
+									"choices" => "[1 DIGITS]", 
+									"mode" => 'dtmf',
+									"bargein" => true,
+									"repeat" => 2,
+									"timeout"=> 10,
+									"onBadChoice" => "keysbadChoiceFCN",
+									"onTimeout" => "ReMkeystimeOutFCN",
+									"onHangup" => create_function("$event", "Prehangup()")
+								)
+							);
+    
+		    if ($result->value == "1") {	
+		    	$loop = true;
+		    	$play = true;
+		    } else if ($result->value == "2") {
+	    		$qid++;
+	    		$loop = true;
+	    		$play = true;
+	    		continue;
+	    	} else if (in_array($result->value, array("3","4","5"))) {
+	    		if ($like) {
+	    			sayInt($test4_prompts."Alreadyliked.wav");
+	    		} else if ($dislike) {
+	    			sayInt($test4_prompts."Alreadydisliked.wav");
+	    		} else if ($report) {
+	    			sayInt($test4_prompts."Alreadyreported.wav");
+	    		} else {
+	    			if ($result->value == "3") {
+			    		sayInt($test4_prompts."Answer3.wav");
+			    		$like = $questions[$qid]['like'] = true;
+		    		} else if ($result->value == "4") {
+			    		sayInt($test4_prompts."Answer4.wav");
+			    		$dislike = $questions[$qid]['dislike'] = true;
+		    		} else if ($result->value == "5") {
+			    		sayInt($test4_prompts."Answer4.wav");
+			    		$report = $questions[$qid]['report'] = true;
+		    		} 
+			    	setResponse($question_id, $result->value);
+		    		$loop = true;
+	    		}
+	    	} else if ($result->value == "6") {
+	    		playComments($question_id);
+	    	} else if($result->value == "7") {
+	    		forwardQuestion($question_id);
+	    	} else if($result->value == "8") {
+	    		user_comment($question_id);
+	    	} else if($result->value == "9") {
+	    		$loop = false;
+	    	} else {
+	    		sayInt($test4_prompts."Wrongbutton.wav");
+	    		$loop = true;
+	    	}
+	 	} else {
+			$loop = true;
+			continue;
+		}
+	}
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
+
+function playComments($question_id){
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+    
+    global $callid;
+	global $userid;
+	global $test4_prompts , $test4_recordings, $usercomments;
+	global $test4_scripts;	
+
+	$comments = getUserComments($question_id);
+
+	if (!$comments) {
+		sayInt($test4_prompts."Nocomment.wav");
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+
+	$i    = 0;
+	$loop = true;
+	$play = true;
+
+	while($loop) {	
+
+		if ($i >= sizeof($comments)) {
+			writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "No more comments in ".__FUNCTION__);
+			sayInt($test4_prompts."Nomorecomment.wav");
+			break;
+		}
+
+		$cid = $comments[$i]["q_feedback_id"];
+
+		if ($play) {
+			sayInt($usercomments.$cid.".wav");
+			$play = false;
+		}
+
+		$result = gatherInput( $test4_prompts."Answer5.wav", array(
+							"choices" => "[1 DIGITS]", 
+							"mode" => 'dtmf',
+							"bargein" => true,
+							"repeat" => 2,
+							"timeout"=> 10,
+							"onBadChoice" => "keysbadChoiceFCN",
+							"onTimeout" => "ReMkeystimeOutFCN",
+							"onHangup" => create_function("$event", "Prehangup()")
+						)
+					);
+		if ($result->value == "1") {
+			$play  = true;
+		} else if ($result->value == "2") {
+			user_comment($question_id);
+		} else if ($result->value == "3") {
+			$i++;
+		} else if ($result->value == "4") {
+			$loop = false;
+		}
+	} 
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
+
+function user_comment($question_id) {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+    
+    global $callid;
+	global $userid;
+	global $test4_prompts , $test4_recordings, $usercomments;
+	global $test4_scripts;	
+
+	$comment_id = createComment($question_id);
+			
+	if (!$comment_id) {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", "Something bad happened in ".__FUNCTION__);
+		return;
+	}
+	
+	$loop 	= true;
+	$record = true;
+	$replay = true;
+
+	while ($loop)  {
+
+		if ($record) {
+
+			recordAudio($test4_prompts."Comment.wav", array(
+			       "beep"=>true,
+			       "timeout"=>300,
+			       "bargein" => false,
+			       "silenceTimeout"=>4,
+			       "maxTime"=>30,
+			       "terminator" => "#",
+			      // "recordFormat" => "audio/wav",
+			       "format" => "audio/wav",
+			       "recordURI" => $test4_scripts."api/add/question_feedback?q_feedback_id=".$comment_id."&question_id=".$question_id."&user_id=".$userid."&call_id=".$callid,
+	        	)
+	    	);
+			$record = false;
+	    	$replay = true;
+		}
+
+		if ($replay) {
+			sayInt($test4_prompts."Record2.wav");
+			$path = $usercomments.$comment_id.".wav";
+			sayInt($path); 
+			$replay = false;
+		}
+		
+
+		$result = gatherInput( $test4_prompts."Record3.wav ", array(
+					"choices" => "[1 DIGITS]", 
+					"mode" => 'dtmf',
+					"bargein" => true,
+					"repeat" => 2,
+					"timeout"=> 10,
+					"onBadChoice" => "keysbadChoiceFCN",
+					"onTimeout" => "ReMkeystimeOutFCN",
+					"onHangup" => create_function("$event", "Prehangup()")
+				)
+			);
+
+		if ($result->value == "1") {
+			sayInt($test4_prompts."Shukriya1.wav");
+			$loop = false;
+		} else if ($result->value == "2") {
+			$record = true;
+			$loop 	= true;
+		} else {
+			sayInt($test4_prompts."Wrongbutton.wav");
+			$loop = true;
+		}
+	}
+}
+
+function user_name($question_id) {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+    
+    global $callid;
+	global $userid;
+	global $test4_prompts , $test4_recordings, $usercomments, $SA_prompts;
+	global $test4_scripts;	
+
+	$loop 	= true;
+	$record = true;
+	$replay = true;
+
+	while ($loop)  {
+
+		if ($record) {
+
+			recordAudio($SA_prompts."Forward3.wav ", array(
+			       "beep"=>true,
+			       "timeout"=>10,
+			       "bargein" => false,
+			       "silenceTimeout"=>3,
+			       "maxTime"=>10,
+			       "terminator" => "#",
+			      // "recordFormat" => "audio/wav",
+			       "format" => "audio/wav",
+			       "recordURI" => $test4_scripts."api/username",
+	        	)
+	    	);
+			$record = false;
+	    	$replay = true;
+		}
+
+		if ($replay) {
+			sayInt($test4_prompts."Record2.wav");
+			$path = $test4_recordings."U".$userid.".wav";
+			sayInt($path); 
+			$replay = false;
+		}
+		
+
+		$result = gatherInput( $test4_prompts."Record3.wav ", array(
+					"choices" => "[1 DIGITS]", 
+					"mode" => 'dtmf',
+					"bargein" => true,
+					"repeat" => 2,
+					"timeout"=> 10,
+					"onBadChoice" => "keysbadChoiceFCN",
+					"onTimeout" => "ReMkeystimeOutFCN",
+					"onHangup" => create_function("$event", "Prehangup()")
+				)
+			);
+
+		if ($result->value == "1") {
+			$loop = false;
+		} else if ($result->value == "2") {
+			$record = true;
+			$loop 	= true;
+		} else {
+			sayInt($test4_prompts."Wrongbutton.wav");
+			$loop = true;
+		}
+	}
+}
+
+function forwardQuestion($question_id) {
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+	
+	global $SA_prompts;
+	global $ReM_prompts;
+	global $userid;
+	global $callid;
+
+	$prompt = $SA_prompts."Forward1.wav";
+
+	$loop = true;
+
+	$number = "";
+
+	while($loop){
+		$NumberList = gatherInput($prompt, array(
+				        "choices" => "[11 DIGITS]",
+						"mode" => 'dtmf',
+						"bargein" => true,
+						"repeat" => 3,
+						"timeout"=> 30,
+						"interdigitTimeout"=> 20,
+						"onBadChoice" => "keysbadChoiceFCN",
+						"onTimeout" => "ReMkeystimeOutFCN",
+						"terminator" => "#",
+						"onHangup" => create_function("$event", "Prehangup()")
+				    )
+				);
+
+		if($NumberList->name == 'choice'){
+
+			writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L2", "Friend's phone number entered: ".$NumberList->value.". Now playing it.");
+
+			$num12 = str_split($NumberList->value);
+
+			for($index1 = 0; $index1 < count($num12); $index1 += 1){
+				if($index1 == 0){
+					$fileName = $num12[$index1].'.wav';
+					$numpath = $ReM_prompts.$fileName;
+				}
+				else{
+					$fileName = $num12[$index1].'.wav';
+					$numpath = $numpath . "\n" . $ReM_prompts.$fileName;
+				}
+			}
+
+			sayInt($SA_prompts."Forward8.wav ");
+			$presult = sayInt($numpath);
+				
+			if ($presult->name == 'choice'){
+				writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L2", "User pressed ".$presult->value." to skip ".$numpath.".");
+			}
+
+			$choice = gatherInput(
+					$SA_prompts."Forward2.wav ", array(
+			        "choices" => "[1 DIGITS],*,#",
+					"mode" => 'dtmf',
+					"bargein" => true,
+					"repeat" => 3,
+					"timeout"=> 5,
+					"onBadChoice" => "keysbadChoiceFCN",
+					"onTimeout" => "ReMkeystimeOutFCN",
+					"onHangup" => create_function("$event", "Prehangup()")
+		        )
+		    );
+		    
+			if($choice->value=="1"){
+				$number = $NumberList->value;
+				$forward_id = createForward($question_id, PhToKeyAndStore($number, $userid));
+				if ($forward_id) {
+					user_name($question_id);
+					if ($userid == 3566) {
+						if(makeNewReq($forward_id, 999888, $callid, "Delivery", PhToKeyAndStore($number, $userid), "Pending", $GLOBALS["SystemLanguage"], $GLOBALS["MessageLanguage"], $GLOBALS["channel"])){
+							sayInt($SA_prompts."Forward6.wav ");
+							$loop   = false;
+						}else
+							$loop   = true;
+					}else{
+						if(makeNewReq($dreq["id"], 999888, $callid, "Delivery", PhToKeyAndStore($number, $userid), "Pending", $SystemLanguage, $MessageLanguage, $channel)){
+							sayInt($SA_prompts."Forward6.wav ");
+							$loop   = false;
+						}else
+							$loop   = true;
+					}
+				}else
+					$loop   = true;
+				$loop = false;
+			}else if($choice->value=="2"){
+				$loop = true;
+			}
+		}
+		else{
+			writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L2", "Timed out. No number entered. Now hanging up.");		
+			$FriendsNumber = 'false';
+			Prehangup();
+		}
+	}
+}
+
+function T4Delivery($del_id){
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+
+	global $test4_prompts, $test4_recordings, $test4_scripts, $callid, $userid, $SA_prompts;
+
+	$params = T4_GetDeliveryParams($del_id);
+
+	//ob_start();
+	//var_dump($params);
+	//$vardump = ob_get_clean();
+
+	//writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . "DUMP! ".$vardump);
+
+	//sayInt($test4_prompts."Messagereceived1.wav");
+
+	if ($params) {
+
+		//writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " inside!");
+
+		$id     = $params["file_id"];
+		$fuid   = $params["fuid"];
+		$ans_id = $params['ans_id'];
+
+		//writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " Params: id: ".$id." = fuid: ".$fuid." = ans: ".$ans_id );
+
+		sayInt($test4_prompts."Messagereceived1.wav");
+		sayInt($test4_recordings."U".$fuid.".wav");
+		sayInt($test4_prompts."Messagereceived2.wav");
+		
+		$loop = true;
+		
+		
+		while($loop){
+
+			sayInt($test4_prompts."Sawaal.wav ".$test4_recordings."Q".$id.".wav ".$test4_prompts."Jawaab.wav ".$test4_recordings."A".$ans_id.".wav");
+
+			$result = gatherInput($SA_prompts."Messageoptions.wav ", array(
+					"choices" => "[1 DIGITS]", 
+					"mode" => 'dtmf',
+					"bargein" => false,
+					"repeat" => 2,
+					"timeout"=> 10,
+					"onBadChoice" => "keysbadChoiceFCN",
+					"onTimeout" => "ReMkeystimeOutFCN",
+					"onHangup" => create_function("$event", "Prehangup()")
+				)
+			);
+		
+			if($result->value == "1"){
+				continue;
+			}
+			
+			else if($result->value == "2"){
+				forwardQuestion($id);
+			}
+			
+			else if($result->value == "3"){
+				Test4Menu();
+			}
+		}
+	}
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
+
+
+/*>>>>***********************************************************************************************<<<<*/
+/*>>>>****************************************  Test 4 END  *****************************************<<<<*/
+/*>>>>***********************************************************************************************<<<<*/
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //*********************************** < Suno Abbu > *********************************//
@@ -2283,7 +3669,7 @@ function SA_Forward($file_id, $type, $info = false) {
 	global $ReM_prompts;
 	global $SA_scripts;
 	global $userid;
-	global $callid;
+	global $callid, $SystemLanguage, $MessageLanguage, $channel;
 
 	$prompt = $SA_prompts."Forward1.wav";
 
@@ -3677,7 +5063,15 @@ function PollyGameMsgDelivery(){
 	if ($effectno == "23704330") {
 		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L2", "SunoAbbu delivery.");
 		SA_Delivery($recIDtoPlay);
-		return;
+		Prehangup();
+		//return;
+	}
+
+	if ($effectno == "999888") {
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L2", "SunoAbbu QA - Test4 - delivery: * ".$recIDtoPlay." *" );
+		T4Delivery($recIDtoPlay);
+		Prehangup();
+		//return;
 	}
 	
 	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L2", "Playing greetings for message delivery.");
@@ -4046,6 +5440,50 @@ function superMenu(){
 	}	
 }// superMenu
 
+function PQHookCallRequest(){
+
+	global $userid, $callid, $app, $DB_dir, $SystemLanguage, $MessageLanguage, $channel;
+
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " entered.");
+
+	$PQPrompts  = "D:/xampp/htdocs/PQuiz/Prompts/";
+	$PQScripts	= "http://127.0.0.1/PQuiz/Scripts/";
+
+	$result_str = doCurl($PQScripts."pqhook_check.php?uid=$userid");
+	$result_json= json_decode($result_str);
+	$to_hook	= $result_json->result;
+	
+	$loop 		= true;
+
+	while ( $loop && (intval($to_hook->times_exist) < 5) ) {
+
+		writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . "Playing PQhook prompt.");
+
+		$result = gatherInput($PQPrompts."sawal-adz.wav", array(
+						"choices" => "[1 DIGITS]", 
+						"mode" => 'dtmf',
+						"bargein" => false,
+						"repeat" => 3,
+						"timeout"=> 10,
+						"onBadChoice" => "keysbadChoiceFCN",
+						"onTimeout" => "keystimeOutFCN",
+						"onHangup" => create_function("$event", "Prehangup()")
+					)
+		);
+
+		if ($result->value == "1") {
+			$reqid  = doCurl($DB_dir."New_Req.php?recid=0&effect=0&callid=$callid&reqtype=PQCall-me-back&from=0428333114&phno=$userid&status=Pending&syslang=$SystemLanguage&msglang=$MessageLanguage&testcall=FALSE&ch=$channel");
+			$pqhook = doCurl($PQScripts."pqhook.php?uid=$userid&call_id=$callid&request=1&reqid=$reqid&app=$app");
+			$loop = false;
+		} else if ($result->value == "2"){
+			doCurl($PQScripts."pqhook.php?uid=$userid&call_id=$callid&request=0&app=$app");
+			$loop = false;
+		} else{
+			$loop = true;
+		}
+	}
+	writeToLog($GLOBALS['callid'], $GLOBALS['fh'], "L1", __FUNCTION__ . " returning.");
+}
 
 function PollyGameAnswerCall($callid, $reply)//PollyGameAnswerCall()
 {
@@ -4184,7 +5622,8 @@ function PollyGameAnswerCall($callid, $reply)//PollyGameAnswerCall()
 					// else 
 					//userDemographicSurvey();
 					//ReMMenuT2();
-					SA_Menu();
+					//SA_Menu();
+					Test4Menu();
 				}
 
 				//sayInt($Polly_prompts_dir."polly-relaunch.wav");
@@ -4267,6 +5706,9 @@ function PollyGameAnswerCall($callid, $reply)//PollyGameAnswerCall()
 		$repeat = "TRUE";
 
 		if (!firstCall() && !$MsgSurveyDone){
+
+			PQHookCallRequest();
+			
 			if (getMsgSurveyFlag()) 
 				playInfoMessage();	
 			else 
@@ -6917,6 +8359,15 @@ function makeNewReq($recid, $effect, $callid, $reqtype, $phno, $status, $syslang
 	$result = doCurl($url);
 	return $result;
 }
+/*
+function makeNewReqREM($recid, $effect, $callid, $reqtype, $phno, $status, $syslang, $msglang, $ch){
+	global $DB_dir;
+	global $userid;
+	global $testcall;
+	$url = $DB_dir."New_Req.php?recid=$recid&effect=$effect&callid=$callid&reqtype=$reqtype&from=0428333112&phno=$phno&status=$status&syslang=$syslang&msglang=$msglang&testcall=$testcall&ch=$ch";
+	$result = doCurl($url);
+	return $result;
+}*/
 
 function createMissedCall($recid, $effect, $callid, $reqtype, $phno, $status, $syslang, $msglang, $ch, $pollyid){
 	global $DB_dir;
@@ -8523,6 +9974,44 @@ function recordAudio($toBeSaid, $params){
 			        $filepathFS = createFilePath($ReM_fb_dir, $record_id.".wav", TRUE);
 	   				$rec_feed   = 6;
 					$filepathFS .= $record_id . ".wav";					
+        		}
+
+        	else if( strpos($recordURI, 'api/add/main_feedback') !== false ) 
+        		{
+        			global $test4_feedbacks;
+
+					$parameterarray = explode("&", explode("?", $recordURI)[1]);
+	       			$record_id      = explode("=", $parameterarray[0])[1];
+
+			        $rec_feed   = 6;
+					$filepathFS = $test4_feedbacks.$record_id . ".wav";					
+        		}
+        	else if( strpos($recordURI, 'api/add/question_feedback') !== false ) 
+        		{
+        			global $usercomments;
+
+					$parameterarray = explode("&", explode("?", $recordURI)[1]);
+	       			$record_id      = explode("=", $parameterarray[0])[1];
+
+	   				$rec_feed   = 6;
+					$filepathFS = $usercomments.$record_id . ".wav";					
+        		}
+        	else if( strpos($recordURI, 'api/add/question_user') !== false ) 
+        		{
+        			global $test4_recordings;
+
+					$parameterarray = explode("&", explode("?", $recordURI)[1]);
+	       			$record_id      = explode("=", $parameterarray[0])[1];
+
+	   				$rec_feed   = 6;
+					$filepathFS = $test4_recordings."Q".$record_id . ".wav";					
+        		}
+        	else if( strpos($recordURI, 'api/username') !== false ) 
+        		{
+        			global $test4_recordings, $userid;
+
+	   				$rec_feed   = 6;
+					$filepathFS = $test4_recordings."U".$userid.".wav";					
         		}
 
 
